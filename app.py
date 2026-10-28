@@ -62,4 +62,20 @@ if not api_key:
 elif pdf is None:
     st.info("👈 Por favor, carga un archivo PDF en el menú lateral para analizarlo.")
 else:
-    with
+    with st.spinner("Procesando el documento y creando la base de conocimiento..."):
+        try:
+            base = crear_base_conocimiento(pdf.getvalue(), api_key)
+            if base is None:
+                st.error("No se pudo extraer texto del PDF (¿es un PDF escaneado sin OCR?).")
+                st.stop()
+        except Exception as e:
+            st.error(f"Error al procesar el PDF: {e}")
+            st.stop()
+
+    # Mostrar el historial del chat
+    for mensaje in st.session_state.mensajes:
+        with st.chat_message(mensaje["role"]):
+            st.markdown(mensaje["content"])
+
+    # Entrada de texto del usuario
+    if pregunta := st.chat_input("
