@@ -78,4 +78,43 @@ else:
             st.markdown(mensaje["content"])
 
     # Entrada de texto del usuario
-    if pregunta := st.chat_input("
+    if pregunta := st.chat_input("Escribe tu pregunta sobre el documento..."):
+        
+        # 1. Mostrar la pregunta del usuario y guardarla en el historial
+        with st.chat_message("user"):
+            st.markdown(pregunta)
+        st.session_state.mensajes.append({"role": "user", "content": pregunta})
+
+        # 2. Generar y mostrar la respuesta del asistente
+        with st.chat_message("assistant"):
+            with st.spinner("Buscando en el documento..."):
+                try:
+                    # Recuperación
+                    docs = base.similarity_search(pregunta, k=4)
+                    contexto = "\n\n---\n\n".join(d.page_content for d in docs)
+
+                    # Generación
+                    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, api_key=api_key)
+                    mensajes_llm = [
+                        ("system", 
+                         "Eres un asistente útil. Responde la pregunta usando únicamente el contexto proporcionado. "
+                         "Si la respuesta no está en el contexto, dilo claramente. Responde en español y de forma conversacional."),
+                        ("human", f"Contexto:\n{contexto}\n\nPregunta: {pregunta}"),
+                    ]
+                    
+                    respuesta = llm.invoke(mensajes_llm)
+                    
+                    # Mostrar la respuesta
+                    st.markdown(respuesta.content)
+                    
+                    # Mostrar las fuentes de forma colapsable
+                    with st.expander("📚 Ver fragmentos recuperados"):
+                        for i, d in enumerate(docs, 1):
+                            st.markdown(f"**Fragmento {i}**")
+                            st.caption(d.page_content)
+                    
+                    # Guardar respuesta en el historial
+                    st.session_state.mensajes.append({"role": "assistant", "content": respuesta.content})
+                    
+                except Exception as e:
+                    st.error(f"Hubo un error al generar la respuesta: {e}")
